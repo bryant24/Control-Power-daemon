@@ -1,52 +1,30 @@
 package main
 
 import (
+	"github.com/gin-gonic/gin"
 	"log"
-	"net"
-	"net/rpc"
 	"os/exec"
 )
 
-var VERSION = "1.0.0.626"
-
-type Pmanager int
-type Args struct {
-	Op string
-}
+var VERSION = "1.0.0.703"
 
 func main() {
-	power := new(Pmanager)
-	rpc.Register(power)
+	r := gin.Default()
+	r.GET("/ping", func(c *gin.Context) {
+		c.JSON(200, gin.H{"errcode": 0})
+	})
+	r.POST("/shutdown", func(c *gin.Context) {
+		ShutDown()
+		c.JSON(200, gin.H{"errcode": 0})
+	})
+	r.Run(":1234")
 
-	tcpAddr, err := net.ResolveTCPAddr("tcp", ":1234")
-	if err != nil {
-		panic(err)
-	}
 	log.Println("成功监听端口:1234")
-
-	listener, err := net.ListenTCP("tcp", tcpAddr)
-	log.Println("节点Rpc服务启动成功,版本号:", VERSION)
-	for {
-		conn, err := listener.Accept()
-
-		if err != nil {
-			continue
-		}
-		go rpc.ServeConn(conn)
-	}
+	log.Println("节点http启动成功,版本号:", VERSION)
 
 }
 
-func (pm *Pmanager) Do(args *Args, reply *bool) (err error) {
-	switch args.Op {
-	case "restart":
-		err = exec.Command("shutdown", `-r`, `-t`, `0`).Run()
-		log.Println("restart:", err)
-	case "shutdown":
-		err = exec.Command("shutdown", `-s`, `-t`, `0`).Run()
-		log.Println("shutdown:", err)
-	}
-	*reply = true
-	return nil
-
+func ShutDown() {
+	log.Println("触发关机")
+	_ = exec.Command("shutdown", `-s`, `-t`, `0`).Run()
 }
